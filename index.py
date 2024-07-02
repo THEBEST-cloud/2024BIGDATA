@@ -42,7 +42,7 @@ def invoke(inputs):
     test_data_root_path = inputs
     for i in range(2):
         if i == 0:
-            data = np.load(os.path.join(test_data_root_path, "temp_lookback.npy")) # (N, L, S, 1)
+            data = np.load(os.path.join(test_data_root_path, "temp_lookback.npy")) # (N, L, S, 1)   N 代表样本窗口 L代表时间点 S 站点数
         else: 
             data = np.load(os.path.join(test_data_root_path, "wind_lookback.npy"))
         N, L, S, _ = data.shape # 72, 168, 60
@@ -52,10 +52,10 @@ def invoke(inputs):
         
         repeat_era5 = np.repeat(cenn_era5_data, 3, axis=1) # (N, L, 4, 9, S)
         C1 = repeat_era5.shape[2] * repeat_era5.shape[3]
-        covariate = repeat_era5.reshape(repeat_era5.shape[0], repeat_era5.shape[1], -1, repeat_era5.shape[4]) # (N, L, C1, S)
-        data = data.transpose(0, 1, 3, 2) # (N, L, 1, S)
+        covariate = repeat_era5.reshape(repeat_era5.shape[0], repeat_era5.shape[1], -1, repeat_era5.shape[4]) # (N, L, C1, S) C1 特征数量
+        data = data.transpose(0, 1, 3, 2) # (N, L, C1, S)
         C = C1 + 1
-        data = np.concatenate([covariate, data], axis=2) # (N, L, C, S)
+        data = np.concatenate([covariate, data], axis=2) # (N, L, C, S)  C 特征数量
         data = data.transpose(0, 3, 1, 2) # (N, S, L, C)
         data = data.reshape(N * S, L, C)
         data = torch.tensor(data).float().cuda() # (N * S, L, C)
@@ -67,7 +67,7 @@ def invoke(inputs):
         else:
             model.load_state_dict(torch.load("/home/mw/project/checkpoints/v1_iTransformer_Meteorology_ftMS_sl168_ll1_pl24_dm64_nh1_el1_df64_global_wind/checkpoint_0.pth"))
         outputs = model(data)
-        outputs = outputs[:, :, -1:].detach().cpu().numpy() # (N * S, P, 1)
+        outputs = outputs[:, :, -1:].detach().cpu().numpy() # (N * S, P, 1) P代表预测时间点
         P = outputs.shape[1]
         forecast = outputs.reshape(N, S, P, 1) # (N, S, P, 1)
         forecast = forecast.transpose(0, 2, 1, 3) # (N, P, S, 1)
